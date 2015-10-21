@@ -109,7 +109,7 @@ func (p *Pool) makeBaby(m, f int) (baby []float64) {
 
 func (p *Pool) Breed() {
 	sort.Sort(ByScore(p.ai))
-	fmt.Printf("%.4f\n", p.ai[0].score)
+	//fmt.Printf("%.4f\n", p.ai[0].score)
 	p.makeRoullete()
 	for i := 3; i < p.size; i++ {
 		m, f := p.roullete[rand.Intn(len(p.roullete))], p.roullete[rand.Intn(len(p.roullete))]
@@ -130,9 +130,6 @@ func abs(n float64) float64 {
 
 func fitnessFunc(resp, want float64) float64 {
 	if want == 0 {
-		if resp > 1 {
-			return 0
-		}
 		return 1 - resp
 	} else {
 		return resp
@@ -146,14 +143,10 @@ func (p *Pool) Fight(input [][]float64, want []float64) {
 		for j, v := range input {
 			ai.In(v)
 			dec := ai.Out()
-			if dec[0] > 1 || dec[0] < 0 {
-				panic("fuck")
-			}
 			score += fitnessFunc(dec[0], want[j])
 		}
 		p.ai[i].score = score
 	}
-
 }
 
 func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, output int) *Pool {
