@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math/rand"
-	"nn"
+	"github.com/WouterBeets/nn"
 	"os"
 	"sort"
 	"time"
