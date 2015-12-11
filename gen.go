@@ -4,10 +4,11 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math/rand"
-	"github.com/WouterBeets/nn"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/WouterBeets/nn"
 )
 
 type Ai struct {
@@ -58,7 +59,7 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 			p.Fight(inp, want)
 		}
 		p.Breed()
-		saver.Encode(p.Ai[0].Net.GetWeights())
+		saver.Encode(p.Ai[0].GetWeights())
 	}
 	sort.Sort(ByScore(p.Ai))
 }
@@ -179,7 +180,6 @@ func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, o
 			nil,
 		}
 		pool.Ai[i].gene = pool.Ai[i].GetWeights()
-		pool.Ai[i].Activate()
 	}
 	return pool
 }
