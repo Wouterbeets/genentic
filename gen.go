@@ -1,15 +1,23 @@
+/*
+	Package gen allows you to manipulate a neural network using genetec generation of its weights.
+
+	You create a pool of ai's using CreatePool. You must then assign a fitness function to the the pool
+	This function will be used to assign scrores each generated neural network. The networks with the highest scores
+	have the best chance of having their genes used in the next generartion.
+*/
 package gen
 
 import (
 	"encoding/gob"
 	"fmt"
+	"github.com/WouterBeets/nn"
 	"math/rand"
 	"os"
 	"sort"
 	"time"
-
-	"github.com/WouterBeets/nn"
 )
+
+//Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance, and a slice of genes.
 
 type Ai struct {
 	*nn.Net
@@ -78,7 +86,9 @@ func (p *Pool) getSumScores() (sum float64) {
 	return
 }
 
-//makeRoullete makes sure that the fittest individuals are more often bred by filling the breeding array more often with their index, from which we later randomly pick new parents
+// makeRoullete creates an array filled with indexes of neural networks.
+// the fittest neuralnetworks are more often represented in the array
+// this array is later used to choose which neuralnetworks genes  from which we later randomly pick new parents
 func (p *Pool) makeRoullete() {
 	sum := p.getSumScores()
 	i := 0
@@ -116,14 +126,12 @@ func (p *Pool) makeBaby(m, f int) (baby []float64) {
 
 func (p *Pool) Breed() {
 	sort.Sort(ByScore(p.Ai))
-	//fmt.Printf("%.4f\n", p.Ai[0].Score)
 	p.makeRoullete()
 	for i := 1; i < p.size; i++ {
 		m, f := p.roullete[rand.Intn(len(p.roullete))], p.roullete[rand.Intn(len(p.roullete))]
 		if m == f {
 			f = rand.Intn(p.size)
 		}
-		//fmt.Printf("%.4f\n", p.Ai[i].Score)
 		p.Ai[i].SetWeights(p.makeBaby(m, f))
 		p.Ai[i].gene = p.Ai[i].GetWeights()
 	}
