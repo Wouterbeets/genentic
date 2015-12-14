@@ -1,1 +1,1 @@
-# genentic
+# genetic
