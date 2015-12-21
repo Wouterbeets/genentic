@@ -50,198 +50,13 @@ func TestCreatePool(t *testing.T) {
 		want        []float64
 	}{
 		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  2,
-			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		},
-		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  3,
-			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		}, {
-			poolSize:    10,
+			poolSize:    50,
 			generations: 50,
 			mutatePer:   0.2,
 			mStrenght:   10,
 			inpNeur:     2,
 			hiddenNeur:  4,
 			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		}, {
-			poolSize:    10,
-			generations: 500,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  4,
-			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		}, {
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  5,
-			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		}, {
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  6,
-			totalLayers: 3,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		}, {
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  2,
-			totalLayers: 4,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		},
-		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  3,
-			totalLayers: 4,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		},
-		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  4,
-			totalLayers: 4,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		},
-		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  5,
-			totalLayers: 4,
-			outNeur:     1,
-			inp: [][]float64{
-				{0, 0},
-				{1, 0},
-				{0, 1},
-				{1, 1},
-			},
-			want: []float64{
-				0, 1, 1, 0,
-			},
-		},
-		{
-			poolSize:    10,
-			generations: 50,
-			mutatePer:   0.2,
-			mStrenght:   10,
-			inpNeur:     2,
-			hiddenNeur:  10,
-			totalLayers: 5,
 			outNeur:     1,
 			inp: [][]float64{
 				{0, 0},
@@ -262,4 +77,46 @@ func TestCreatePool(t *testing.T) {
 		t2 := time.Now()
 		fmt.Println(t2.Sub(t))
 	}
+}
+
+func BenchmarkBrain(b *testing.B) {
+	var tests = []struct {
+		poolSize    int
+		generations int
+		mutatePer   float64
+		mStrenght   float64
+		inpNeur     int
+		hiddenNeur  int
+		totalLayers int
+		outNeur     int
+		inp         [][]float64
+		want        []float64
+	}{
+		{
+			poolSize:    50,
+			generations: 5000,
+			mutatePer:   0.1,
+			mStrenght:   10,
+			inpNeur:     2,
+			hiddenNeur:  4,
+			totalLayers: 3,
+			outNeur:     1,
+			inp: [][]float64{
+				{0, 0},
+				{1, 0},
+				{0, 1},
+				{1, 1},
+			},
+			want: []float64{
+				0, 1, 1, 0,
+			},
+		},
+	}
+	test := tests[0]
+	p := CreatePool(test.poolSize, test.mutatePer, test.mStrenght, test.inpNeur, test.hiddenNeur, test.totalLayers, test.outNeur)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		p.Evolve(test.generations, test.inp, test.want)
+	}
+	b.StopTimer()
 }

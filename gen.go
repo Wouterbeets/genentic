@@ -26,6 +26,7 @@ type Ai struct {
 	gene        []float64
 }
 
+//Type ByScrore is a wrapper for a slice of ais and implements the sort interface
 type ByScore []*Ai
 
 func (ais ByScore) Len() int {
@@ -40,12 +41,13 @@ func (ais ByScore) Less(i, j int) bool {
 	return ais[i].Score > ais[j].Score
 }
 
+//Type Pool is a struct that holds a slice of Ais.
 type Pool struct {
 	Ai        []*Ai
-	size      int
+	size      int // number of ais
 	roullete  [100]int
-	mutatePer float64
-	mStrength float64
+	mutatePer float64          //percentage of genes to be mutated
+	mStrength float64          //how much the origninal value should be mutated by
 	FightFunc func([]*Ai, int) //if function is set ,it will be used instead of standard Fight func. It must fill the ais Score field.
 }
 
@@ -56,7 +58,7 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	}
 	saver := gob.NewEncoder(file)
 	for i := 0; i < generations; i++ {
-		fmt.Println("generation", i)
+		//fmt.Println("generation", i)
 		if i == 299000 {
 			str := ""
 			fmt.Scanln(&str)
@@ -102,6 +104,9 @@ func (p *Pool) makeRoullete() {
 
 func (p *Pool) mutate(genes []float64) {
 	gToMutate := float64(len(genes)) * p.mutatePer
+	if gToMutate < 1 {
+		gToMutate = 1
+	}
 	for i := 0; i < int(gToMutate); i++ {
 		r := rand.Int()
 		if r%2 == 0 {
@@ -113,13 +118,11 @@ func (p *Pool) mutate(genes []float64) {
 }
 
 func (p *Pool) makeBaby(m, f int) (baby []float64) {
-	mGene := make([]float64, len(p.Ai[m].gene))
-	fGene := make([]float64, len(p.Ai[f].gene))
-	copy(mGene, p.Ai[m].gene)
-	copy(fGene, p.Ai[f].gene)
-	baby = append(mGene[:len(mGene)/4], fGene[len(fGene)/4:]...)
-	baby = append(baby[:(len(mGene)/4)*2], mGene[(len(fGene)/4)*2:]...)
-	baby = append(baby[:(len(mGene)/4)*3], fGene[(len(fGene)/4)*3:]...)
+	mGene := p.Ai[m].gene
+	fGene := p.Ai[f].gene
+	baby = make([]float64, 0, len(mGene))
+	baby = append(baby, mGene[:len(mGene)/2]...)
+	baby = append(baby, fGene[len(fGene)/2:]...)
 	p.mutate(baby)
 	return
 }
@@ -164,7 +167,7 @@ func (p *Pool) Fight(input [][]float64, want []float64) {
 	for i, Ai := range p.Ai {
 		Score := float64(0)
 		for j, v := range input {
-			Ai.In(v)
+			go Ai.In(v)
 			dec := Ai.Out()
 			Score += fitnessFunc(dec[0], want[j])
 		}
