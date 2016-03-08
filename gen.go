@@ -10,7 +10,7 @@ package gen
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/WouterBeets/nn"
+	"github.com/Wouterbeets/nn"
 	"math/rand"
 	"os"
 	"sort"
@@ -18,7 +18,6 @@ import (
 )
 
 //Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance, and a slice of genes.
-
 type Ai struct {
 	*nn.Net
 	Score       float64
@@ -26,7 +25,7 @@ type Ai struct {
 	gene        []float64
 }
 
-//Type ByScrore is a wrapper for a slice of ais and implements the sort interface
+//ByScore is a wrapper for a slice of ais and implements the sort interface
 type ByScore []*Ai
 
 func (ais ByScore) Len() int {
@@ -41,7 +40,7 @@ func (ais ByScore) Less(i, j int) bool {
 	return ais[i].Score > ais[j].Score
 }
 
-//Type Pool is a struct that holds a slice of Ais.
+//Pool is a struct that holds a slice of Ais.
 type Pool struct {
 	Ai        []*Ai
 	size      int // number of ais
@@ -51,6 +50,7 @@ type Pool struct {
 	FightFunc func([]*Ai, int) //if function is set ,it will be used instead of standard Fight func. It must fill the ais Score field.
 }
 
+//Evolve runs the loop for that aplies the genetic channges per generation
 func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	file, err := os.OpenFile("foo.gob", os.O_RDWR|os.O_APPEND, 0660)
 	if err != nil {
@@ -127,6 +127,7 @@ func (p *Pool) makeBaby(m, f int) (baby []float64) {
 	return
 }
 
+//Breed make new ai from the best ai this genereation
 func (p *Pool) Breed() {
 	sort.Sort(ByScore(p.Ai))
 	p.makeRoullete()
@@ -158,11 +159,11 @@ func abs(n float64) float64 {
 func fitnessFunc(resp, want float64) float64 {
 	if want == 0 {
 		return 1 - resp
-	} else {
-		return resp
 	}
+	return resp
 }
 
+//Fight is the standard fitness func for whne you want to create dumb things
 func (p *Pool) Fight(input [][]float64, want []float64) {
 	for i, Ai := range p.Ai {
 		Score := float64(0)
@@ -175,6 +176,7 @@ func (p *Pool) Fight(input [][]float64, want []float64) {
 	}
 }
 
+//CreatePool is the constructor of the pool of ais that are to be evolved
 func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, output int) *Pool {
 	pool := &Pool{
 		Ai:        make([]*Ai, size),
