@@ -33,7 +33,7 @@ type Ai struct {
 	Name        string
 }
 
-//Type ByScrore is a wrapper for a slice of ais and implements the sort interface
+//ByScore is a wrapper for a slice of ais and implements the sort interface
 type ByScore []*Ai
 
 func (ais ByScore) Len() int {
@@ -48,7 +48,7 @@ func (ais ByScore) Less(i, j int) bool {
 	return ais[i].Score > ais[j].Score
 }
 
-//Type Pool is a struct that holds a slice of Ais.
+//Pool is a struct that holds a slice of Ais.
 type Pool struct {
 	Ai        []*Ai
 	size      int // number of ais
@@ -59,6 +59,7 @@ type Pool struct {
 	Chal      Challenge
 }
 
+//Evolve runs the loop for that aplies the genetic channges per generation
 func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	for i := 0; i < generations; i++ {
 		t := time.Now()
@@ -175,6 +176,7 @@ func (p *Pool) makeBaby(m, f int) (baby []float64) {
 	return
 }
 
+//Breed make new ai from the best ai this genereation
 func (p *Pool) Breed() {
 	sort.Sort(ByScore(p.Ai))
 	p.makeRoullete()
@@ -217,11 +219,11 @@ func abs(n float64) float64 {
 func fitnessFunc(resp, want float64) float64 {
 	if want == 0 {
 		return 1 - resp
-	} else {
-		return resp
 	}
+	return resp
 }
 
+//Fight is the standard fitness func for whne you want to create dumb things
 func (p *Pool) Fight(input [][]float64, want []float64) {
 	for i, Ai := range p.Ai {
 		Score := float64(0)
@@ -234,6 +236,7 @@ func (p *Pool) Fight(input [][]float64, want []float64) {
 	}
 }
 
+//CreatePool is the constructor of the pool of ais that are to be evolved
 func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, output int) *Pool {
 	pool := &Pool{
 		Ai:        make([]*Ai, size),

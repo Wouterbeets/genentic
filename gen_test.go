@@ -94,7 +94,7 @@ func BenchmarkBrain(b *testing.B) {
 	}{
 		{
 			poolSize:    50,
-			generations: 5000,
+			generations: 5,
 			mutatePer:   0.1,
 			mStrenght:   10,
 			inpNeur:     2,
