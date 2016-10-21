@@ -8,22 +8,29 @@
 package gen
 
 import (
-	"encoding/gob"
 	"fmt"
+	names "github.com/Pallinder/go-randomdata"
 	"github.com/WouterBeets/nn"
+	"log"
 	"math/rand"
-	"os"
 	"sort"
 	"time"
 )
 
-//Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance, and a slice of genes.
+const (
+	ELITE = 5
+)
 
+type Challenge interface {
+	Start(p1, p2 *Ai) (score1, score2 float64)
+}
+
+//Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance, and a slice of genes.
 type Ai struct {
 	*nn.Net
 	Score       float64
 	GamesPlayed float64
-	gene        []float64
+	Name        string
 }
 
 //Type ByScrore is a wrapper for a slice of ais and implements the sort interface
@@ -49,29 +56,68 @@ type Pool struct {
 	mutatePer float64          //percentage of genes to be mutated
 	mStrength float64          //how much the origninal value should be mutated by
 	FightFunc func([]*Ai, int) //if function is set ,it will be used instead of standard Fight func. It must fill the ais Score field.
+	Chal      Challenge
 }
 
 func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
-	file, err := os.OpenFile("foo.gob", os.O_RDWR|os.O_APPEND, 0660)
-	if err != nil {
-		file, err = os.Create("foo.gob")
-	}
-	saver := gob.NewEncoder(file)
 	for i := 0; i < generations; i++ {
-		//fmt.Println("generation", i)
-		if i == 299000 {
-			str := ""
-			fmt.Scanln(&str)
-		}
+		t := time.Now()
+		log.Println("generation", i)
 		if p.FightFunc != nil {
 			p.FightFunc(p.Ai, i)
 		} else if inp != nil && want != nil {
 			p.Fight(inp, want)
+		} else if p.Chal != nil {
+			p.DoChal()
 		}
 		p.Breed()
-		saver.Encode(p.Ai[0].GetWeights())
+		fmt.Println("estimated time to finish", time.Since(t)*time.Duration(generations-i))
 	}
 	sort.Sort(ByScore(p.Ai))
+}
+
+func (p *Pool) declareWinner(p1, p2 *Ai, s1, s2, s3, s4 float64) (winner *Ai) {
+	p1.Score += s1 + s4
+	p2.Score += s2 + s3
+	if s1+s4 > s2+s3 {
+		winner = p1
+	} else {
+		winner = p2
+	}
+	return
+}
+
+//tournament is a recursive function that creates a tree like tournament
+//the winner of a match is retured by the function and then advances to the next round
+func (p *Pool) tournament(ais map[*Ai]int8, layerSize int) (winner *Ai) {
+	if layerSize >= len(ais) {
+		var ai1, ai2 *Ai
+		for ai1 = range ais {
+			delete(ais, ai1)
+			break
+		}
+		for ai2 = range ais {
+			delete(ais, ai2)
+			break
+		}
+		s1, s2 := p.Chal.Start(ai1, ai2)
+		s3, s4 := p.Chal.Start(ai2, ai1)
+		return p.declareWinner(ai1, ai2, s1, s2, s3, s4)
+	}
+	w1 := p.tournament(ais, layerSize*2)
+	w2 := p.tournament(ais, layerSize*2)
+	s1, s2 := p.Chal.Start(w1, w2)
+	s3, s4 := p.Chal.Start(w2, w1)
+	return p.declareWinner(w1, w2, s1, s2, s3, s4)
+}
+
+func (p *Pool) DoChal() {
+	m := make(map[*Ai]int8)
+	for _, ai := range p.Ai {
+		m[ai] = 0
+	}
+	p.tournament(m, 1)
+	fmt.Println()
 }
 
 func (p *Pool) String() (str string) {
@@ -118,11 +164,13 @@ func (p *Pool) mutate(genes []float64) {
 }
 
 func (p *Pool) makeBaby(m, f int) (baby []float64) {
-	mGene := p.Ai[m].gene
-	fGene := p.Ai[f].gene
+	mGene := p.Ai[m].GetWeights()
+	fGene := p.Ai[f].GetWeights()
 	baby = make([]float64, 0, len(mGene))
-	baby = append(baby, mGene[:len(mGene)/2]...)
-	baby = append(baby, fGene[len(fGene)/2:]...)
+	baby = append(baby, mGene[:len(mGene)/4]...)
+	baby = append(baby, fGene[len(fGene)/4:(len(fGene)/4)*2]...)
+	baby = append(baby, mGene[(len(mGene)/4)*2:(len(mGene)/4)*3]...)
+	baby = append(baby, fGene[(len(fGene)/4)*3:]...)
 	p.mutate(baby)
 	return
 }
@@ -130,22 +178,33 @@ func (p *Pool) makeBaby(m, f int) (baby []float64) {
 func (p *Pool) Breed() {
 	sort.Sort(ByScore(p.Ai))
 	p.makeRoullete()
-	for i := 1; i < p.size; i++ {
-		m, f := p.roullete[rand.Intn(len(p.roullete))], p.roullete[rand.Intn(len(p.roullete))]
-		if m == f {
+	for i := ELITE; i < p.size; i++ {
+		f, m := 0, 0
+		if rand.Int()%2 == 0 {
+			m = i
+			f = p.roullete[rand.Intn(len(p.roullete))]
+		} else {
+			f = i
+			m = p.roullete[rand.Intn(len(p.roullete))]
+		}
+		for m == f {
 			f = rand.Intn(p.size)
 		}
 		p.Ai[i].SetWeights(p.makeBaby(m, f))
-		p.Ai[i].gene = p.Ai[i].GetWeights()
 	}
 	for i, ai := range p.Ai {
-		if i < 5 {
-			fmt.Println(ai.Score)
+		_ = i
+		if i < ELITE {
+			fmt.Printf("%20s : %6.2f\n", ai.Name, ai.Score)
 		}
 		ai.Score = 0
 		ai.GamesPlayed = 0
 	}
-	fmt.Println("\n")
+	for i := 2; i < ELITE; i++ {
+		w := p.Ai[i].GetWeights()
+		p.mutate(w)
+	}
+	log.Println("\n")
 }
 
 func abs(n float64) float64 {
@@ -188,9 +247,8 @@ func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, o
 			nn.NewNet(input, hidden, layers, output),
 			0,
 			0,
-			nil,
+			names.SillyName(),
 		}
-		pool.Ai[i].gene = pool.Ai[i].GetWeights()
 	}
 	return pool
 }
