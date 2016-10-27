@@ -10,7 +10,7 @@ package gen
 import (
 	"fmt"
 	names "github.com/Pallinder/go-randomdata"
-	"github.com/WouterBeets/nn"
+	"github.com/Wouterbeets/nn"
 	"log"
 	"math/rand"
 	"sort"
