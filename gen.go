@@ -18,19 +18,35 @@ import (
 )
 
 const (
-	ELITE = 5
+	ELITE = 3
 )
 
 type Challenge interface {
 	Start(p1, p2 *Ai) (score1, score2 float64)
 }
 
-//Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance, and a slice of genes.
+//Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance.
 type Ai struct {
 	*nn.Net
 	Score       float64
+	TotalScore  float64
 	GamesPlayed float64
 	Name        string
+}
+
+//ByScore is a wrapper for a slice of ais and implements the sort interface
+type ByTotalScore []*Ai
+
+func (ais ByTotalScore) Len() int {
+	return len(ais)
+}
+
+func (ais ByTotalScore) Swap(i, j int) {
+	ais[i], ais[j] = ais[j], ais[i]
+}
+
+func (ais ByTotalScore) Less(i, j int) bool {
+	return ais[i].TotalScore > ais[j].TotalScore
 }
 
 //ByScore is a wrapper for a slice of ais and implements the sort interface
@@ -80,9 +96,13 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 func (p *Pool) declareWinner(p1, p2 *Ai, s1, s2, s3, s4 float64) (winner *Ai) {
 	p1.Score += s1 + s4
 	p2.Score += s2 + s3
+	p1.GamesPlayed += 1
+	p2.GamesPlayed += 1
 	if s1+s4 > s2+s3 {
+		p1.TotalScore += 1
 		winner = p1
 	} else {
+		p2.TotalScore += 1
 		winner = p2
 	}
 	return
@@ -113,11 +133,17 @@ func (p *Pool) tournament(ais map[*Ai]int8, layerSize int) (winner *Ai) {
 }
 
 func (p *Pool) DoChal() {
-	m := make(map[*Ai]int8)
-	for _, ai := range p.Ai {
-		m[ai] = 0
+	for i := 0; i < len(p.Ai); {
+		p1, j := p.Ai[i], i+1
+		for j < len(p.Ai) {
+			p2 := p.Ai[j]
+			s1, s2 := p.Chal.Start(p1, p2)
+			s3, s4 := p.Chal.Start(p2, p1)
+			p.declareWinner(p1, p2, s1, s2, s3, s4)
+			j++
+		}
+		i++
 	}
-	p.tournament(m, 1)
 	fmt.Println()
 }
 
@@ -194,18 +220,24 @@ func (p *Pool) Breed() {
 		}
 		p.Ai[i].SetWeights(p.makeBaby(m, f))
 	}
+	sort.Sort(ByTotalScore(p.Ai))
 	for i, ai := range p.Ai {
 		_ = i
-		if i < ELITE {
-			fmt.Printf("%20s : %6.2f\n", ai.Name, ai.Score)
+		if i < 10 {
+			fmt.Printf("Global %20s : %6.2f : %6.2f : %6.2f\n", ai.Name, ai.Score, ai.TotalScore, ai.TotalScore/ai.GamesPlayed)
+		}
+		//ai.GamesPlayed = 0
+	}
+	sort.Sort(ByScore(p.Ai))
+	for i, ai := range p.Ai {
+		_ = i
+		if i < 10 {
+			fmt.Printf("Round %20s : %6.2f : %6.2f : %6.2f\n", ai.Name, ai.Score, ai.TotalScore, ai.TotalScore/ai.GamesPlayed)
 		}
 		ai.Score = 0
-		ai.GamesPlayed = 0
+		//ai.GamesPlayed = 0
 	}
-	for i := 2; i < ELITE; i++ {
-		w := p.Ai[i].GetWeights()
-		p.mutate(w)
-	}
+
 	log.Println("\n")
 }
 
@@ -248,6 +280,7 @@ func CreatePool(size int, mutatePer, mStrength float64, input, hidden, layers, o
 	for i := range pool.Ai {
 		pool.Ai[i] = &Ai{
 			nn.NewNet(input, hidden, layers, output),
+			0,
 			0,
 			0,
 			names.SillyName(),
