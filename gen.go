@@ -75,7 +75,7 @@ type Pool struct {
 	Chal      Challenge
 }
 
-//Evolve runs the loop for that aplies the genetic channges per generation
+//Evolve runs the loop that aplies the genetic channges per generation
 func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	for i := 0; i < generations; i++ {
 		t := time.Now()
@@ -93,44 +93,38 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	sort.Sort(ByScore(p.Ai))
 }
 
-func (p *Pool) declareWinner(p1, p2 *Ai, s1, s2, s3, s4 float64) (winner *Ai) {
-	p1.Score += s1 + s4
-	p2.Score += s2 + s3
+func (p *Pool) declareWinner(p1, p2 *Ai, s1, s2, s3, s4 float64) {
+	p1.Score += (s1 + s4/2)
+	p2.Score += (s2 + s3/2)
 	p1.GamesPlayed += 1
 	p2.GamesPlayed += 1
-	if s1+s4 > s2+s3 {
-		p1.TotalScore += 1
-		winner = p1
-	} else {
-		p2.TotalScore += 1
-		winner = p2
-	}
-	return
+	p1.TotalScore += (s1 + s4) / 2
+	p2.TotalScore += (s2 + s3) / 2
 }
 
 //tournament is a recursive function that creates a tree like tournament
 //the winner of a match is retured by the function and then advances to the next round
-func (p *Pool) tournament(ais map[*Ai]int8, layerSize int) (winner *Ai) {
-	if layerSize >= len(ais) {
-		var ai1, ai2 *Ai
-		for ai1 = range ais {
-			delete(ais, ai1)
-			break
-		}
-		for ai2 = range ais {
-			delete(ais, ai2)
-			break
-		}
-		s1, s2 := p.Chal.Start(ai1, ai2)
-		s3, s4 := p.Chal.Start(ai2, ai1)
-		return p.declareWinner(ai1, ai2, s1, s2, s3, s4)
-	}
-	w1 := p.tournament(ais, layerSize*2)
-	w2 := p.tournament(ais, layerSize*2)
-	s1, s2 := p.Chal.Start(w1, w2)
-	s3, s4 := p.Chal.Start(w2, w1)
-	return p.declareWinner(w1, w2, s1, s2, s3, s4)
-}
+//func (p *Pool) tournament(ais map[*Ai]int8, layerSize int) (winner *Ai) {
+//	if layerSize >= len(ais) {
+//		var ai1, ai2 *Ai
+//		for ai1 = range ais {
+//			delete(ais, ai1)
+//			break
+//		}
+//		for ai2 = range ais {
+//			delete(ais, ai2)
+//			break
+//		}
+//		s1, s2 := p.Chal.Start(ai1, ai2)
+//		s3, s4 := p.Chal.Start(ai2, ai1)
+//		return p.declareWinner(ai1, ai2, s1, s2, s3, s4)
+//	}
+//	w1 := p.tournament(ais, layerSize*2)
+//	w2 := p.tournament(ais, layerSize*2)
+//	s1, s2 := p.Chal.Start(w1, w2)
+//	s3, s4 := p.Chal.Start(w2, w1)
+//	return p.declareWinner(w1, w2, s1, s2, s3, s4)
+//}
 
 func (p *Pool) DoChal() {
 	for i := 0; i < len(p.Ai); {
@@ -193,13 +187,53 @@ func (p *Pool) mutate(genes []float64) {
 func (p *Pool) makeBaby(m, f int) (baby []float64) {
 	mGene := p.Ai[m].GetWeights()
 	fGene := p.Ai[f].GetWeights()
+	nSplits := rand.Intn((len(mGene) / 2)) + 2
+	splits := make([]int, nSplits, nSplits+1)
+	for i := 1; i < nSplits; i++ {
+		splits[i] = rand.Intn(len(mGene))
+	}
+	splits = append(splits, len(mGene))
+	sort.Sort(sort.IntSlice(splits))
 	baby = make([]float64, 0, len(mGene))
-	baby = append(baby, mGene[:len(mGene)/4]...)
-	baby = append(baby, fGene[len(fGene)/4:(len(fGene)/4)*2]...)
-	baby = append(baby, mGene[(len(mGene)/4)*2:(len(mGene)/4)*3]...)
-	baby = append(baby, fGene[(len(fGene)/4)*3:]...)
+	parent := mGene
+	dad := true
+	for i := 0; i < len(splits)-1; i++ {
+		if splits[i] != splits[i+1] {
+			baby = append(baby, parent[splits[i]:splits[i+1]]...)
+			if dad {
+				parent = fGene
+				dad = false
+			} else {
+				dad = true
+				parent = mGene
+			}
+		}
+	}
 	p.mutate(baby)
 	return
+}
+
+func (p *Pool) PrintTopStats(prefix string, top int) {
+	for i, ai := range p.Ai {
+		_ = i
+		if i < top {
+			fmt.Printf("%s -- %20s : %6.2f : %6.2f : %6.2f\n", prefix, ai.Name, ai.Score, ai.TotalScore, ai.TotalScore/ai.GamesPlayed)
+		}
+	}
+	log.Println("\n")
+}
+
+func (p *Pool) resetScores() {
+	for _, ai := range p.Ai {
+		ai.Score = 0
+	}
+}
+func (p *Pool) printStats() {
+	sort.Sort(ByTotalScore(p.Ai))
+	p.PrintTopStats("total", 5)
+	sort.Sort(ByScore(p.Ai))
+	p.PrintTopStats("gener", 5)
+	log.Println("\n")
 }
 
 //Breed make new ai from the best ai this genereation
@@ -220,25 +254,8 @@ func (p *Pool) Breed() {
 		}
 		p.Ai[i].SetWeights(p.makeBaby(m, f))
 	}
-	sort.Sort(ByTotalScore(p.Ai))
-	for i, ai := range p.Ai {
-		_ = i
-		if i < 10 {
-			fmt.Printf("Global %20s : %6.2f : %6.2f : %6.2f\n", ai.Name, ai.Score, ai.TotalScore, ai.TotalScore/ai.GamesPlayed)
-		}
-		//ai.GamesPlayed = 0
-	}
-	sort.Sort(ByScore(p.Ai))
-	for i, ai := range p.Ai {
-		_ = i
-		if i < 10 {
-			fmt.Printf("Round %20s : %6.2f : %6.2f : %6.2f\n", ai.Name, ai.Score, ai.TotalScore, ai.TotalScore/ai.GamesPlayed)
-		}
-		ai.Score = 0
-		//ai.GamesPlayed = 0
-	}
-
-	log.Println("\n")
+	p.printStats()
+	p.resetScores()
 }
 
 func abs(n float64) float64 {
