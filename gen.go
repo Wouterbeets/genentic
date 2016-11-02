@@ -17,12 +17,22 @@ import (
 	"time"
 )
 
+type Intel interface {
+	In([]float64) error
+	Out() []float64
+	GetName() string
+}
+
 const (
 	ELITE = 3
 )
 
-type Challenge interface {
-	Start(p1, p2 *Ai) (score1, score2 float64)
+type School interface {
+	Teach(ai Intel) (score float64)
+}
+
+type Pit interface {
+	Combat(p1, p2 Intel) (score1, score2 float64)
 }
 
 //Ai is a struct that holds a neural network, some varaibles to keep track of its perfomance.
@@ -32,6 +42,10 @@ type Ai struct {
 	TotalScore  float64
 	GamesPlayed float64
 	Name        string
+}
+
+func (ai *Ai) GetName() string {
+	return ai.Name
 }
 
 //ByScore is a wrapper for a slice of ais and implements the sort interface
@@ -66,13 +80,14 @@ func (ais ByScore) Less(i, j int) bool {
 
 //Pool is a struct that holds a slice of Ais.
 type Pool struct {
-	Ai        []*Ai
-	size      int // number of ais
-	roullete  [100]int
-	mutatePer float64          //percentage of genes to be mutated
-	mStrength float64          //how much the origninal value should be mutated by
-	FightFunc func([]*Ai, int) //if function is set ,it will be used instead of standard Fight func. It must fill the ais Score field.
-	Chal      Challenge
+	Ai          []*Ai
+	size        int // number of ais
+	roullete    [100]int
+	mutatePer   float64          //percentage of genes to be mutated
+	mStrength   float64          //how much the origninal value should be mutated by
+	FightFunc   func([]*Ai, int) //if function is set ,it will be used instead of standard Fight func. It must fill the ais Score field.
+	FightingPit Pit
+	School      School
 }
 
 //Evolve runs the loop that aplies the genetic channges per generation
@@ -84,8 +99,10 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 			p.FightFunc(p.Ai, i)
 		} else if inp != nil && want != nil {
 			p.Fight(inp, want)
-		} else if p.Chal != nil {
-			p.DoChal()
+		} else if p.FightingPit != nil {
+			p.DoCombat()
+		} else if p.School != nil {
+			p.DoTeach()
 		}
 		p.Breed()
 		fmt.Println("estimated time to finish", time.Since(t)*time.Duration(generations-i))
@@ -126,13 +143,21 @@ func (p *Pool) declareWinner(p1, p2 *Ai, s1, s2, s3, s4 float64) {
 //	return p.declareWinner(w1, w2, s1, s2, s3, s4)
 //}
 
-func (p *Pool) DoChal() {
+func (p *Pool) DoTeach() {
+	for i := 0; i < len(p.Ai); i++ {
+		p.Ai[i].Score = p.School.Teach(p.Ai[i])
+		p.Ai[i].TotalScore += p.Ai[i].Score
+		p.Ai[i].GamesPlayed += 2
+	}
+}
+
+func (p *Pool) DoCombat() {
 	for i := 0; i < len(p.Ai); {
 		p1, j := p.Ai[i], i+1
 		for j < len(p.Ai) {
 			p2 := p.Ai[j]
-			s1, s2 := p.Chal.Start(p1, p2)
-			s3, s4 := p.Chal.Start(p2, p1)
+			s1, s2 := p.FightingPit.Combat(p1, p2)
+			s3, s4 := p.FightingPit.Combat(p2, p1)
 			p.declareWinner(p1, p2, s1, s2, s3, s4)
 			j++
 		}
