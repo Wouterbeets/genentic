@@ -95,6 +95,7 @@ func (p *Pool) Evolve(generations int, inp [][]float64, want []float64) {
 	for i := 0; i < generations; i++ {
 		t := time.Now()
 		log.Println("generation", i)
+		fmt.Println()
 		if p.FightFunc != nil {
 			p.FightFunc(p.Ai, i)
 		} else if inp != nil && want != nil {
@@ -255,6 +256,7 @@ func (p *Pool) resetScores() {
 }
 func (p *Pool) printStats() {
 	sort.Sort(ByTotalScore(p.Ai))
+	fmt.Println()
 	p.PrintTopStats("total", 5)
 	sort.Sort(ByScore(p.Ai))
 	p.PrintTopStats("gener", 5)
